@@ -74,9 +74,9 @@
         <input type="text" id="search_bar" class="p-2 pt-0 black dotted border-dark bg-white" placeholder="boruto 87"
             autofocus><br>
         <button type="submit" id="btn_search" class="mt-3 btn border-dark btn-sm">search for it!</button>
-        <button type="button" class="mt-3 btn border-dark btn-sm">reset</button><br>
+        <button type="button" class="mt-3 btn border-dark btn-sm" id="btn_reset">reset</button><br>
         <p class="mt-5 mb-1">Copyright &copy; loncat <span id="year">2030</span></p>
-        <a href="https://github.com/p4kl0nc4t"><i class="display-5 display-block text-muted mute-buttons fab fa-github mb-2"></i></a>
+        <a href="https://github.com/p4kl0nc4t/Smhdk"><i class="display-5 display-block text-muted mute-buttons fab fa-github mb-2"></i></a>
         <a href="mailto:faizzjazadi@gmail.com"><i class="display-5 display-block text-muted mute-buttons fa fa-envelope mb-2"></i></a>
         <a href="https://t.me/p4kl0nc4t"><i class="display-5 display-block text-muted mute-buttons fab fa-telegram-plane mb-2"></i></a>
         <a href="https://wa.me/6285237048641"><i class="display-5 display-block text-muted mute-buttons fab fa-whatsapp mb-2"></i></a>
@@ -92,7 +92,9 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <p>To download your file, click the download icon beside the desired file name. After you clicked the icon, the download process might be delayed (up to 10s) due to the direct link generation process.</p>
+                    <p>To download your file, click the download icon beside the desired file name. After you clicked
+                        the icon, the download process might be delayed (up to 10s) due to the direct link generation
+                        process.</p>
                     <div id="result_modal_body">
 
                     </div>
@@ -150,6 +152,9 @@
                     $('#result_modal').modal();
                 }
             });
+        });
+        $('#btn_reset').click(function () {
+            $('#search_bar').val('');
         });
         $('#search_bar').keyup(function (e) {
             if (e.key !== "Enter") return;
