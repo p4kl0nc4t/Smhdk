@@ -55,4 +55,4 @@ def get_dl(link):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, threaded=True)
+    app.run(host='0.0.0.0', debug=False, threaded=True, port=20001)
