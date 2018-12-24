@@ -8,13 +8,31 @@ import threading
 app = f.Flask(__name__, template_folder='.')
 app.cache = {}
 app.init_time = time.time()
-app.bounded_semaphore = threading.BoundedSemaphore(10)
+app.bounded_semaphore = threading.BoundedSemaphore(12)
+app.client_bounded_semaphore_list = {}
 
 
 @app.before_request
 def br():
     if time.time() - app.init_time >= 2*60*60:
         app.cache = {}
+    if f.request.endpoint in ['query', 'get_dl']:
+        ip_addr = f.request.remote_addr
+        if ip_addr not in app.client_bounded_semaphore_list:
+            app.client_bounded_semaphore_list[ip_addr] = threading.BoundedSemaphore(
+                3)
+        app.client_bounded_semaphore_list[ip_addr].acquire()
+
+
+@app.after_request
+def ar():
+    try:
+        ip_addr = f.request.remote_addr
+        app.client_bounded_semaphore_list[ip_addr].release()
+    except ValueError:
+        app.client_bounded_semaphore_list.pop(ip_addr)
+    except:
+        pass
 
 
 @app.route('/')
