@@ -65,8 +65,9 @@ class Samehadaku:
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
             futures = e.map(work, self.links)
             for future in futures:
-                title, href = future
-                self.rlinks[title] = href
+                if future:
+                    title, href = future
+                    self.rlinks[title] = href
 
 
 if __name__ == '__main__':
