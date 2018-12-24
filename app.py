@@ -25,7 +25,7 @@ def br():
 
 
 @app.after_request
-def ar():
+def ar(resp):
     try:
         ip_addr = f.request.remote_addr
         app.client_bounded_semaphore_list[ip_addr].release()
@@ -33,6 +33,7 @@ def ar():
         app.client_bounded_semaphore_list.pop(ip_addr)
     except:
         pass
+    return resp
 
 
 @app.route('/')
