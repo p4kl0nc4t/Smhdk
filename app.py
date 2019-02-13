@@ -16,6 +16,7 @@ app.client_bounded_semaphore_list = {}
 def br():
     if time.time() - app.init_time >= 2*60*60:
         app.cache = {}
+        app.init_time = time.time()
     if f.request.endpoint in ['query', 'get_dl']:
         ip_addr = f.request.remote_addr
         if ip_addr not in app.client_bounded_semaphore_list:
