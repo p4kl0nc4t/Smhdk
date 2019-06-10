@@ -1,0 +1,43 @@
+{% if not items %}
+    <script>
+        alert('Sorry, I can\'t find what you want, please make sure that your search query is correct then try again.');
+    </script>
+{% else %}
+<div class="modal fade" id="result_modal" tabindex="-1" role="dialog" aria-labelledby="result_modal_label"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header black text-white">
+                <h6 class="modal-title" id="result_modal_title">{{ title }}</h6>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>To download your file, click the download button on the desired type and quality row. After you clicked the link, the download process might be delayed (up to 10s) due to the direct link generation process.</p>
+                <div id="result_modal_body">
+                    <table class="table table-bordered table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Type</th>
+                                <th class="text-center">Quality</th>
+                                <th class="text-center">Link</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in items %}
+                            <tr>
+                                <td>{{ row['type'] }}</td>
+                                <td>{{ row['quality'] }}</td>
+                                <td><a href="{{ url_for('get_dl', link=encode(row['link'].encode()).decode()) }}"><i class="fa fa-download"></i>
+                                        Download</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

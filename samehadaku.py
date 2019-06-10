@@ -1,7 +1,6 @@
 import requests
 import re
 import base64
-import concurrent.futures
 
 
 class Samehadaku:
@@ -11,12 +10,15 @@ class Samehadaku:
         self.title = None
         self.cache = {}
         self.href = None
-        self.rlinks = {}
+        self.rlinks = []
         q = q + ' episode subtitle indonesia'
         r = requests.get(self.url, params={'s': q})
         results = re.findall(
-            r'<h3 class="post-title"><a href="(.+?)" title="(.+?)">.+</a></h3>', r.text, re.M | re.I)
-        if len(results):
+            '<h3 class="post-title"><a href="(.+?)" ' +
+            'title="(.+?)">.+</a></h3>',
+            r.text, re.M | re.I)
+        fail_indicator = 'Sorry, but nothing matched your search terms.'
+        if len(results) and fail_indicator not in r.text:
             self.href = results[0][0]
             self.title = results[0][1]
 
@@ -25,49 +27,56 @@ class Samehadaku:
             return False
         page = requests.get(u)
         links = re.findall(
-            r'<li.*<a.*?href="(.+?)".*?>MU.*?</a>.*?</li>', page.text, re.M | re.I)
+            r'<li.*<a.*?href="(.+?)".*?>MU.*?</a>.*?</li>',
+            page.text, re.M | re.I)
         self.links = links
-
-    def _extract(self, u):
-        if not u.startswith('http'):
-            return False
-        for _ in range(2):
-            r = requests.get(u)
-            m = re.findall(
-                r'''<a.*?href=".+?\?.=(aHR0c.+?)".*?_blank".*?>''', r.text, re.M | re.I)
-            if len(m):
-                u = base64.b64decode(m[0]).decode()
-            else:
-                break
-        return u
+        self.page_text = page.text
+        return True
 
     def get_links(self):
-        if not self.href:
-            return False
-        else:
-            self._fetch(self.href)
-        if not self.links:
+        if not self.href or (self._fetch(self.href) and not self.links):
             return False
 
-        def work(link):
-            link = self._extract(link)
-            if not link:
-                return
-            r = requests.get(link)
-            m = re.findall(
-                r'''btn btn-default' href='(.+?)'>download now</a>"\);''', r.text, re.M | re.I)
-            if not len(m):
-                return
-            title = re.findall(
-                r'<div class="heading-1">(.+?)</div>', r.text, re.M | re.I)
-            if len(title):
-                return title[0], m[0]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
-            futures = e.map(work, self.links)
-            for future in futures:
-                if future:
-                    title, href = future
-                    self.rlinks[title] = href
+        def clean_type(raw_html):
+            cleanr = re.compile('<.*?>')
+            cleantext = re.sub(cleanr, '', raw_html).lower()
+            hf_types_pr = ['3gp', 'x265', 'mp4', 'mkv']
+            for t in hf_types_pr:
+                if t in cleantext:
+                    return t
+            return cleantext.strip()
+
+        vtypes = re.findall('^(<p.+?)\n.*?download-eps',
+                            self.page_text, re.M | re.I)
+        sections = {}
+        for i, v in enumerate(vtypes):
+            if i+1 != len(vtypes):
+                sections[clean_type(v)] = self.page_text[self.page_text.find(
+                    v):self.page_text.find(vtypes[i+1]):]
+            else:
+                sections[clean_type(
+                    v)] = self.page_text[self.page_text.find(v):]
+        rlinks = []
+        for link in self.links:  # iterate over links
+            for vtype, text in sections.items():  # check for section
+                if link in text:
+                    vquals = re.findall(
+                        r'<li.*?>.*?<strong>(.+?)<', text, re.M | re.I)
+                    for i, vqual in enumerate(vquals):
+                        if i+1 != len(vquals):
+                            if link in text[text.find(vqual):text.find(
+                                    vquals[i+1]):]:
+                                break
+                        elif link in text[text.find(vqual):]:
+                            break
+                    break
+                else:
+                    continue
+            if (link and vtype and vqual):
+                rlinks.append(
+                    {'link': link,
+                     'type': vtype.lower(), 'quality': vqual.lower()})
+        self.rlinks = rlinks
 
 
 if __name__ == '__main__':

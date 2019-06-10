@@ -1,38 +1,41 @@
-import flask as f
-import samehadaku as s
-import time
 import base64 as b64
-import requests
+import re
 import threading
+import time
+
+import flask as f
+import requests
+
+import samehadaku as s
 
 app = f.Flask(__name__, template_folder='.')
 app.cache = {}
 app.init_time = time.time()
 app.bounded_semaphore = threading.BoundedSemaphore(12)
-app.client_bounded_semaphore_list = {}
+app.client_bsemaphores = {}
 
 
 @app.before_request
-def br():
+def before_req():
     if time.time() - app.init_time >= 2*60*60:
         app.cache = {}
         app.init_time = time.time()
     if f.request.endpoint in ['query', 'get_dl']:
         ip_addr = f.request.remote_addr
-        if ip_addr not in app.client_bounded_semaphore_list:
-            app.client_bounded_semaphore_list[ip_addr] = threading.BoundedSemaphore(
+        if ip_addr not in app.client_bsemaphores:
+            app.client_bsemaphores[ip_addr] = threading.BoundedSemaphore(
                 3)
-        app.client_bounded_semaphore_list[ip_addr].acquire()
+        app.client_bsemaphores[ip_addr].acquire()
 
 
 @app.after_request
-def ar(resp):
+def after_req(resp):
     try:
         ip_addr = f.request.remote_addr
-        app.client_bounded_semaphore_list[ip_addr].release()
+        app.client_bsemaphores[ip_addr].release()
     except ValueError:
-        app.client_bounded_semaphore_list.pop(ip_addr)
-    except:
+        app.client_bsemaphores.pop(ip_addr)
+    except Exception:
         pass
     return resp
 
@@ -54,25 +57,34 @@ def query(q):
         else:
             smhdk.get_links()
             items = smhdk.rlinks
-            if not items:
-                return f.jsonify(ok=False)
-            items = {k: b64.urlsafe_b64encode(
-                v.encode()).decode() for k, v in items.items()}
-            app.cache[smhdk.href] = items
+            if items:
+                app.cache[smhdk.href] = items
     finally:
         app.bounded_semaphore.release()
-    return f.jsonify(ok=True, items=items, title=smhdk.title)
+    return f.render_template('links.html', items=items,
+                             title=smhdk.title, encode=b64.urlsafe_b64encode)
 
 
 @app.route('/_/dl/<link>')
 def get_dl(link):
     try:
         link = b64.urlsafe_b64decode(link).decode()
-    except:
-        return f.jsonify(ok=False)
-    if not link.startswith('https://megaup.net/'):
-        return f.jsonify(ok=False)
+    except Exception:
+        f.abort(404)
     app.bounded_semaphore.acquire()
+    if not link.startswith('http'):
+        f.abort(404)
+    for _ in range(3):
+        r = requests.get(link)
+        m = re.findall(
+            r'''<a.*?href=".+?\?.=(aHR0c.+?)".*?_blank".*?>''',
+            r.text, re.M | re.I)
+        if len(m):
+            link = b64.b64decode(m[0]).decode()
+        else:
+            break
+    if not link.startswith('https://megaup.net/'):
+        return f.redirect(link)
     try:
         ses = requests.Session()
         ses.get(link)
