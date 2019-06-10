@@ -15,4 +15,4 @@ python-editor==1.0.4
 requests==2.21.0
 six==1.12.0
 urllib3==1.25.3
-Werkzeug==0.15.2
+Werkzeug==0.15.4
