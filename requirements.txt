@@ -1,6 +1,6 @@
 alembic==1.0.10
 autopep8==1.4.4
-certifi==2019.3.9
+certifi==2019.6.16
 chardet==3.0.4
 Click==7.0
 Flask==1.0.3
