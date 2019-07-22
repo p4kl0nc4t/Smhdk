@@ -7,7 +7,7 @@ Flask==1.0.3
 idna==2.8
 itsdangerous==1.1.0
 Jinja2==2.10.1
-Mako==1.0.12
+Mako==1.0.14
 MarkupSafe==1.1.1
 pycodestyle==2.5.0
 python-dateutil==2.8.0
