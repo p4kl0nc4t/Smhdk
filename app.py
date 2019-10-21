@@ -51,19 +51,26 @@ def query(q):
         f.abort(403)
     app.bounded_semaphore.acquire()
     try:
-        smhdk = s.Samehadaku(q)
-        if smhdk.href in app.cache:
-            items = app.cache[smhdk.href]
-        else:
-            smhdk.get_links()
-            items = smhdk.rlinks
-            if items:
-                app.cache[smhdk.href] = items
+        smhdk = s.Samehadaku()
+        smhdk.init(q)
+        lists = smhdk.get_list()
+    finally:
+        app.bounded_semaphore.release()
+    return f.render_template('eps_list.html',
+                             lists=lists, encode=b64.urlsafe_b64encode)
+
+@app.route('/_/<url>')
+def show_modal(url):
+    app.bounded_semaphore.acquire()
+    url = b64.urlsafe_b64decode(url).decode()
+    try:
+        smhdk = s.Samehadaku()
+        smhdk.get_links_external(url)
+        items = smhdk.rlinks
     finally:
         app.bounded_semaphore.release()
     return f.render_template('links.html', items=items,
                              title=smhdk.title, encode=b64.urlsafe_b64encode)
-
 
 @app.route('/_/dl/<link>')
 def get_dl(link):
@@ -74,15 +81,36 @@ def get_dl(link):
     app.bounded_semaphore.acquire()
     if not link.startswith('http'):
         f.abort(404)
-    for _ in range(3):
+    if link.startswith('https://www.ahexa.com'):
+        for _ in range(3):
+            r = requests.get(link)
+            m = re.findall(
+                r'''<a.*?href=".+?\?.=(aHR0c.+?)".*?_blank".*?>''',
+                r.text, re.M | re.I)
+            if len(m):
+                link = b64.b64decode(m[0]).decode()
+            else:
+                break
+    else:
         r = requests.get(link)
-        m = re.findall(
-            r'''<a.*?href=".+?\?.=(aHR0c.+?)".*?_blank".*?>''',
-            r.text, re.M | re.I)
-        if len(m):
-            link = b64.b64decode(m[0]).decode()
-        else:
-            break
+        dLink = re.findall(
+            '<form id="east_theme" method="POST" action="(.+?)" name="eastsafelink_form">',
+            r.text, re.M | re.I)[0]
+        dInput = re.findall(
+            '<input type="hidden" name="(.+?)" value="(.+?)" />',
+            r.text, re.M | re.I)[0]
+        data = {
+            dInput[0]:dInput[1]
+        }
+        r = requests.post(dLink,data=data)
+        link = re.findall(
+            'changeLink\(\)\{var a\=\'(.+?)\';window.open\(a,"_blank"\)\};',
+            r.text, re.M | re.I)[0]
+        r = requests.get(link)
+        link = re.findall(
+            '<a href="(.+?)" rel="nofollow" target="_blank">.+</a>',
+            r.text, re.M | re.I)[0]
+        link = b64.urlsafe_b64decode(link.split('?r=')[1]).decode()
     if not link.startswith('https://megaup.net/'):
         return f.redirect(link)
     try:
