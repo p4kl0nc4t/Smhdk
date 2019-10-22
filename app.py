@@ -65,7 +65,7 @@ def show_modal(url):
     url = b64.urlsafe_b64decode(url).decode()
     try:
         smhdk = s.Samehadaku()
-        smhdk.get_links_external(url)
+        smhdk.get_links(url)
         items = smhdk.rlinks
     finally:
         app.bounded_semaphore.release()
@@ -81,7 +81,7 @@ def get_dl(link):
     app.bounded_semaphore.acquire()
     if not link.startswith('http'):
         f.abort(404)
-    if link.startswith('https://www.ahexa.com'):
+    if link.startswith('https://www.ahexa.com'): # bypass function 1
         for _ in range(3):
             r = requests.get(link)
             m = re.findall(
@@ -91,7 +91,7 @@ def get_dl(link):
                 link = b64.b64decode(m[0]).decode()
             else:
                 break
-    else:
+    else: # bypass function 2
         r = requests.get(link)
         dLink = re.findall(
             '<form id="east_theme" method="POST" action="(.+?)" name="eastsafelink_form">',
@@ -104,7 +104,7 @@ def get_dl(link):
         }
         r = requests.post(dLink,data=data)
         link = re.findall(
-            'changeLink\(\)\{var a\=\'(.+?)\';window.open\(a,"_blank"\)\};',
+            r'changeLink\(\)\{var a\=\'(.+?)\';window.open\(a,"_blank"\)\};',
             r.text, re.M | re.I)[0]
         r = requests.get(link)
         link = re.findall(
